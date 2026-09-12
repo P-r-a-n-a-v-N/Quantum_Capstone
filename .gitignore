@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+
+# Environment / secrets  --  NEVER commit real credentials
+.env
+.env.local
+
+# Local telemetry history (regenerates itself)
+*.sqlite3
+*.sqlite3-journal
+backend/data/
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# OS
+.DS_Store
+
+# Claude Code local tooling
+.claude/

@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-lab-950 text-slate-200 antialiased;
+    /* A faint dual-glow behind the page: the instrument-panel feel comes from
+       light falling off into black, not from flat fills. */
+    background-image:
+      radial-gradient(ellipse 80% 50% at 20% -10%, rgba(34, 211, 238, 0.07), transparent),
+      radial-gradient(ellipse 60% 50% at 90% 0%, rgba(167, 139, 250, 0.06), transparent);
+    background-attachment: fixed;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-lab-700;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-lab-600;
+  }
+}
+
+@layer components {
+  .panel {
+    @apply rounded-xl border border-lab-700/70 bg-lab-900/60 backdrop-blur-sm;
+  }
+  .panel-heading {
+    @apply flex items-center gap-2 border-b border-lab-700/70 px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400;
+  }
+}

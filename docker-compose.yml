@@ -1,0 +1,45 @@
+# IBM Quantum Live Telemetry Dashboard
+#
+# Two services. No Redis, no Postgres, no message broker -- a single-operator
+# dashboard with one background poller does not need a fanout tier, and adding
+# one would be architecture for its own sake. See docs/architecture.md.
+#
+#   docker compose up --build     ->  http://localhost:8080
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      # Blank credentials are fine: the dashboard runs in Simulated Telemetry
+      # mode. Fill them in .env to switch to live IBM data.
+      IBM_QUANTUM_API_KEY: ${IBM_QUANTUM_API_KEY:-}
+      IBM_QUANTUM_CRN: ${IBM_QUANTUM_CRN:-}
+      IBM_QUANTUM_API_URL: ${IBM_QUANTUM_API_URL:-https://quantum.cloud.ibm.com/api/v1}
+      IBM_API_VERSION: ${IBM_API_VERSION:-2024-01-01}
+      POLL_INTERVAL_SECONDS: ${POLL_INTERVAL_SECONDS:-12}
+      FORCE_MOCK_MODE: ${FORCE_MOCK_MODE:-false}
+      ENABLE_HISTORY: ${ENABLE_HISTORY:-true}
+      HISTORY_DB_PATH: /app/backend/data/telemetry.sqlite3
+      HISTORY_RETENTION_DAYS: ${HISTORY_RETENTION_DAYS:-7}
+    volumes:
+      - telemetry-history:/app/backend/data
+    restart: unless-stopped
+    # Not published to the host: only nginx needs to reach it.
+    expose:
+      - "8000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  telemetry-history:
