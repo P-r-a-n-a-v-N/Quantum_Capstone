@@ -21,12 +21,15 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from pathlib import Path
+
 from .api import rest, websocket
 from .api.websocket import ConnectionManager
 from .config import get_settings
 from .core.cache import TelemetryStore
 from .core.history import HistoryStore
 from .core.poller import TelemetryPoller
+from .static import mount_frontend
 
 logging.basicConfig(
     level=logging.INFO,
@@ -107,8 +110,8 @@ app.include_router(rest.router)
 app.include_router(websocket.router)
 
 
-@app.get("/", tags=["meta"])
-async def root() -> dict[str, str]:
+@app.get("/api", tags=["meta"])
+async def api_root() -> dict[str, str]:
     return {
         "name": "IBM Quantum Live Telemetry Dashboard",
         "docs": "/docs",
@@ -116,3 +119,20 @@ async def root() -> dict[str, str]:
         "health": "/api/health",
         "stream": "/ws/telemetry",
     }
+
+
+# Mounted last, deliberately: routes are matched in registration order, so a
+# catch-all at "/" registered earlier would shadow /api and /ws.
+_FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+_frontend_mounted = mount_frontend(app, _FRONTEND_DIST)
+
+if not _frontend_mounted:
+
+    @app.get("/", tags=["meta"])
+    async def root() -> dict[str, str]:
+        return {
+            "name": "IBM Quantum Live Telemetry Dashboard",
+            "note": "Frontend not built; run `npm run build` in frontend/.",
+            "docs": "/docs",
+            "telemetry": "/api/telemetry",
+        }

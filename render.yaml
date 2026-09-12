@@ -1,0 +1,29 @@
+# Render Blueprint -- https://render.com/docs/blueprint-spec
+#
+# Deploys the single-container image: one web service, no database, no broker.
+# Render detects this file automatically when you point a Blueprint at the repo.
+
+services:
+  - type: web
+    name: quantum-telemetry-dashboard
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      # Blank credentials are intentional: the dashboard runs in Simulated
+      # Telemetry mode with no configuration at all. Set these two in the Render
+      # dashboard (never in this file) to switch it to live IBM data.
+      - key: IBM_QUANTUM_API_KEY
+        sync: false
+      - key: IBM_QUANTUM_CRN
+        sync: false
+      - key: POLL_INTERVAL_SECONDS
+        value: "12"
+      - key: ENABLE_HISTORY
+        value: "true"
+      # Render's free tier has no persistent disk, so the SQLite file resets on
+      # each deploy and on wake from sleep. The dashboard handles this: the
+      # simulator re-bootstraps and the chart refills from the live stream.
+      - key: HISTORY_DB_PATH
+        value: /app/backend/data/telemetry.sqlite3

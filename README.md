@@ -78,7 +78,7 @@ Full design rationale, including what was rejected and why:
   charge time.
 - **Honest mode indicator** — reflects the backend's actual `source`; it is a
   readout, not a switch the frontend could use to lie.
-- **77 backend tests** covering token refresh, every IBM failure mode, the
+- **83 backend tests** covering token refresh, every IBM failure mode, the
   fallback guarantee, and recommender ordering.
 
 ---
@@ -181,7 +181,7 @@ Every setting has a working default; `.env` is only needed to change one.
 ./.venv/bin/python -m pytest -q
 ```
 
-77 tests, ~0.6 s. They cover the claims this project makes rather than merely
+83 tests, under a second. They cover the claims this project makes rather than merely
 exercising the code:
 
 - Simulated queue depths **drift** rather than jump, so the chart is believable
@@ -226,6 +226,51 @@ excludes `.env`, `node_modules`, `.venv` and `.git` from both build contexts.
 
 ---
 
+## Deploying
+
+`docker-compose.yml` runs two services, which suits a VPS. Hosting free tiers
+generally allocate **one** service per app, so the root `Dockerfile` builds a
+single container in which FastAPI serves the API, the WebSocket **and** the
+built React bundle from one origin — which also removes CORS and WebSocket
+proxying from the production path entirely.
+
+```bash
+docker build -t quantum-dashboard .
+docker run -p 8000:8000 quantum-dashboard   # → http://localhost:8000
+```
+
+`PORT` is read from the environment, as hosting platforms assign it at runtime.
+
+### Why not a serverless platform
+
+This app needs a **stateful, long-lived process**: a background poller that
+ticks every 12 seconds whether or not anyone is visiting, plus persistent
+WebSocket connections fanned out from that process's in-memory cache. Serverless
+functions terminate after responding, so there is nothing to hold either. Making
+this run on serverless would mean abandoning the single-poller design — the one
+thing that keeps the request rate to IBM constant. See
+[docs/architecture.md](docs/architecture.md) §1.
+
+A platform that runs containers as long-lived processes is therefore required.
+
+### Render
+
+`render.yaml` is a Blueprint: point Render at the repo and it configures the
+service, health check and environment. Credentials are set in the dashboard, not
+in the file.
+
+Two free-tier caveats worth planning around:
+
+- **Spin-down.** Free services sleep after 15 minutes idle and take ~1 minute to
+  wake. Before a demo, either open the link a couple of minutes early, or keep it
+  warm by pinging `/api/health` every 10 minutes — 750 instance-hours per month
+  is slightly more than a calendar month, so staying awake fits the allowance.
+- **No persistent disk.** The SQLite history file resets on each deploy. The app
+  handles this: the simulator re-bootstraps and the chart refills from the live
+  stream.
+
+---
+
 ## Project layout
 
 ```
@@ -240,6 +285,7 @@ backend/
     cache.py              TTLCache snapshot store
     history.py            SQLite queue-depth log
     analytics.py          fleet summary + recommender
+  static.py               serves the built frontend from the same process
   api/
     rest.py               cache-reading REST endpoints
     websocket.py          fan-out to connected clients
@@ -250,7 +296,9 @@ frontend/src/
   components/             QPUCard, QueueChart, JobStream, ModeToggle,
                           FleetSummary, Recommender
 docs/architecture.md      design rationale
+Dockerfile                single-container image for deployment
 docker-compose.yml        backend + frontend, no broker
+render.yaml               Render Blueprint
 .dockerignore             keeps secrets and node_modules out of build contexts
 ```
 
