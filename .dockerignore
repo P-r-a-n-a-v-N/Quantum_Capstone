@@ -31,3 +31,6 @@ backend/data/
 # Docs are not needed at runtime
 docs/
 README.md
+
+# Accidental nested clone of this repo -- not part of any build
+Quantum_Capstone/
